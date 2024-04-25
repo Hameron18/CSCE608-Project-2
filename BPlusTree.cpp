@@ -86,9 +86,23 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2)
             } else {
                 // There is no space, create a new leaf and split values -- i.e., overflow (Case 2)
                 // Create new node
+                node* newLeaf = new node();
+
                 // r = floor[(n+1)/2]
+                int r = (order + 1) / 2; // integer truncation
+
                 // Put values k_r+1 through k_n+1 in new leaf
+                int j = 0;
+                for (int i = r; i < order; i++) {
+                    newLeaf->ptrs[j] = ptr->ptrs[i];
+                    newLeaf->keys[j] = ptr->keys[i];
+                    j++;
+                }
+                newLeaf->ptrs[j] = ptr->ptrs[order];
+
                 // Put values k0 through kr in old leaf (ptr)
+
+
                 // Point sequence pointer of new leaf where the old sequence pointer was
                 // Point sequence pointer of old leaf to new leaf
                 // If ptr is the root:
@@ -109,8 +123,10 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2)
 
 int main()
 {
-    pair<string, int> p("This is a test pair ", 7);
-    cout << p.first << p.second << endl;
+    // pair<string, int> p("This is a test pair ", 7);
+    // cout << p.first << p.second << endl;
+
+    // cout << "7 / 2 int division = " << 7/2 << endl;
 
 
     cout << "Program finished." << endl;
