@@ -61,9 +61,44 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2)
     } else {
         // Check if we are at a leaf or non-leaf node
         if (ptr->leaf == true) {
+            // Leaf node
+
+            // Find the index of where the new value should be inserted to
+            int index;
+            for (int i = 0; i < ptr->numKeys; i++) {
+                index = i;
+                if (ptr->keys[i] > k) {
+                    break;
+                }
+            }
+
+            // Make sure that there is space for the new value (Case 1)
+            if (ptr->numKeys < order) {
+                for (int i = ptr->numKeys-1; i > index; i--) {
+                    // Push larger values forward
+                    ptr->keys[i] = ptr->keys[i-1];
+
+                    // No need to change pointers since this is a leaf node and there is room. 
+                }
+
+                // Insert value into node
+                ptr->keys[index] = k;
+            } else {
+                // There is no space, create a new leaf and split values -- i.e., overflow (Case 2)
+                // Create new node
+                // r = floor[(n+1)/2]
+                // Put values k_r+1 through k_n+1 in new leaf
+                // Put values k0 through kr in old leaf (ptr)
+                // Point sequence pointer of new leaf where the old sequence pointer was
+                // Point sequence pointer of old leaf to new leaf
+                // If ptr is the root:
+                    // Create new root with the two children and key k_r+1
+                // Else:
+                    // Return pair with new leaf and k_r+1
+            }
 
         } else {
-            
+            // None leaf node
         }
         
     }
