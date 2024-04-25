@@ -33,8 +33,11 @@ class BPlusTree {
         node* getRoot();
         int search(node* ptr, int x);
         int rangeSearch(int* ptr, int x, int y);
-        bool insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2);
+        bool insert(int val);
+        bool insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2);
         bool deletion(int val);
+        void printRoot();
+        void printNode(node* no);
 };
 
 // Constructor
@@ -46,69 +49,123 @@ BPlusTree::~BPlusTree() {}
 // Returns pointer to root
 node* BPlusTree::getRoot() { return root; }
 
-bool BPlusTree::insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2)
+bool BPlusTree::insert(int val)
 {
-    node* p = p1.first;
-    int k = p1.second;
+    pair<node*, int>* p1 = new pair<node*, int>(nullptr, val);
+    pair<node*, int>* p2 = new pair<node*, int>(nullptr, 0);
+    return insertion(this->getRoot(), p1, p2);
+}
+
+bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
+{
+    node* p = p1->first;
+    int k = p1->second;
 
     // Check to see if we are creating a root
-    if (this->getRoot() == nullptr) {
+    if (root == nullptr) {
         // Create root node
         root = new node();
         root->keys[0] =  k;
         root->numKeys = 1;
         root->leaf = true;
+        return true;
     } else {
         // Check if we are at a leaf or non-leaf node
         if (ptr->leaf == true) {
             // Leaf node
-
-            // Find the index of where the new value should be inserted to
-            int index;
-            for (int i = 0; i < ptr->numKeys; i++) {
-                index = i;
-                if (ptr->keys[i] > k) {
-                    break;
-                }
-            }
-
             // Make sure that there is space for the new value (Case 1)
             if (ptr->numKeys < order) {
-                for (int i = ptr->numKeys-1; i > index; i--) {
+                // Find the index of where the new value should be inserted to
+                int index = 0;
+                for (int i = 0; i < ptr->numKeys; i++) {
+                    if (ptr->keys[i] > k) {
+                        break;
+                    }
+                    index++;
+                }
+                cout << "Index for new value = " << index << endl;                
+
+                // Move keys around to fit new key
+                for (int i = ptr->numKeys; i > index; i--) {
                     // Push larger values forward
                     ptr->keys[i] = ptr->keys[i-1];
-
-                    // No need to change pointers since this is a leaf node and there is room. 
                 }
 
                 // Insert value into node
                 ptr->keys[index] = k;
+
+                // Increase node size
+                ptr->numKeys++;
+
+                // Return p' = null, k' = 0
+                p2->first = nullptr;
+                p2->second = 0;
+                return true;
             } else {
                 // There is no space, create a new leaf and split values -- i.e., overflow (Case 2)
+                // Find where new value should go
+                int index = 0;
+                for (int i = 0; i < ptr->numKeys; i++) {
+                    if (ptr->keys[i] > k) {
+                        break;
+                    }
+                    index++;
+                }
+                cout << "Index for new value = " << index << endl;
+
+                // Create new list to hold all values
+                int* list = new int[order+1];
+
+                // Transfer keys to new list
+                for (int i = 0; i < index; i++) {
+                    list[i] = ptr->keys[i];
+                }
+                list[index] = k;
+                for (int i = index+1; i < order+1; i++) {
+                    list[i] = ptr->keys[i-1];
+                }
+
                 // Create new node
                 node* newLeaf = new node();
+                newLeaf->leaf = true;
 
-                // r = floor[(n+1)/2]
+                // Set r = floor[(n+1)/2]
                 int r = (order + 1) / 2; // integer truncation
 
                 // Put values k_r+1 through k_n+1 in new leaf
                 int j = 0;
-                for (int i = r; i < order; i++) {
-                    newLeaf->ptrs[j] = ptr->ptrs[i];
-                    newLeaf->keys[j] = ptr->keys[i];
+                for (int i = r; i <= order; i++) {
+                    newLeaf->keys[j] = list[i];
+                    newLeaf->numKeys++;
                     j++;
                 }
-                newLeaf->ptrs[j] = ptr->ptrs[order];
+
+                // Change pointer directions for linked leaves
+                newLeaf->ptrs[order] = ptr->ptrs[order];
+                ptr->ptrs[order] = newLeaf;
 
                 // Put values k0 through kr in old leaf (ptr)
+                ptr->numKeys = 0;
+                for (int i = 0; i < r; i++) {
+                    ptr->keys[i] = list[i];
+                    ptr->numKeys++;
+                }
 
-
-                // Point sequence pointer of new leaf where the old sequence pointer was
-                // Point sequence pointer of old leaf to new leaf
                 // If ptr is the root:
                     // Create new root with the two children and key k_r+1
-                // Else:
-                    // Return pair with new leaf and k_r+1
+                if (ptr == root) {
+                    node* newRoot = new node();
+                    newRoot->keys[0] = newLeaf->keys[0];
+                    newRoot->numKeys++;
+                    newRoot->ptrs[0] = ptr;
+                    newRoot->ptrs[1] = newLeaf;
+                    root = newRoot;
+                } else {
+                    p2->first = newLeaf;
+                    p2->second = newLeaf->keys[0];
+                }
+                
+                return true;
             }
 
         } else {
@@ -121,6 +178,30 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2)
     return false;
 }
 
+void BPlusTree::printRoot()
+{
+    int* ks = root->keys;
+    int n = root->numKeys;
+
+    cout << "[";
+    for (int i = 0; i < n; i++) {
+        cout << ks[i] << ", ";
+    }
+    cout << "]" << endl;
+}
+
+void BPlusTree::printNode(node* no)
+{
+    int* ks = no->keys;
+    int n = no->numKeys;
+
+    cout << "[";
+    for (int i = 0; i < n; i++) {
+        cout << ks[i] << ", ";
+    }
+    cout << "]" << endl;
+}
+
 int main()
 {
     // pair<string, int> p("This is a test pair ", 7);
@@ -128,6 +209,24 @@ int main()
 
     // cout << "7 / 2 int division = " << 7/2 << endl;
 
+    BPlusTree tree;
+    
+    bool one = tree.insert(17);
+    cout << "Insertion attempt #1: " << one << endl;
+    bool two = tree.insert(11);
+    cout << "Insertion attempt #2: " << two << endl;
+    bool three = tree.insert(23);
+    cout << "Insertion attempt #3: " << three << endl;
+
+    tree.printRoot();
+
+    bool four = tree.insert(5);
+    cout << "Insertion attempt #4: " << four << endl;
+
+    tree.printRoot();
+    for (int i = 0; i < tree.getRoot()->numKeys+1; i++) {
+        tree.printNode(tree.getRoot()->ptrs[i]);
+    }
 
     cout << "Program finished." << endl;
     return 0;
