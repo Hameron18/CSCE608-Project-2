@@ -2,7 +2,7 @@
 #include "string.h"
 
 using namespace std;
-
+ 
 string treeType = "dense";
 int order = 3;
 
@@ -31,9 +31,9 @@ class BPlusTree {
         BPlusTree();
         ~BPlusTree();
         node* getRoot();
-        int search(int* ptr, int x);
+        int search(node* ptr, int x);
         int rangeSearch(int* ptr, int x, int y);
-        bool insertion(node* ptr, int val);
+        bool insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2);
         bool deletion(int val);
 };
 
@@ -46,17 +46,25 @@ BPlusTree::~BPlusTree() {}
 // Returns pointer to root
 node* BPlusTree::getRoot() { return root; }
 
-bool BPlusTree::insertion(node* ptr, int val)
+bool BPlusTree::insertion(node* ptr, pair<node*, int> p1, pair<node*, int> p2)
 {
+    node* p = p1.first;
+    int k = p1.second;
+
     // Check to see if we are creating a root
     if (this->getRoot() == nullptr) {
         // Create root node
         root = new node();
-        root->keys[0] =  val;
+        root->keys[0] =  k;
         root->numKeys = 1;
         root->leaf = true;
     } else {
-        // Check if we are adding to root node or if we need to traverse
+        // Check if we are at a leaf or non-leaf node
+        if (ptr->leaf == true) {
+
+        } else {
+            
+        }
         
     }
 
@@ -66,6 +74,10 @@ bool BPlusTree::insertion(node* ptr, int val)
 
 int main()
 {
+    pair<string, int> p("This is a test pair ", 7);
+    cout << p.first << p.second << endl;
 
+
+    cout << "Program finished." << endl;
     return 0;
 }
