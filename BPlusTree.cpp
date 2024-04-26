@@ -31,7 +31,7 @@ class BPlusTree {
         BPlusTree();
         ~BPlusTree();
         node* getRoot();
-        int search(node* ptr, int x);
+        pair<node*, int> search(node* ptr, int x);
         int rangeSearch(int* ptr, int x, int y);
         bool insert(int val);
         bool insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2);
@@ -50,20 +50,27 @@ BPlusTree::~BPlusTree() {}
 // Returns pointer to root
 node* BPlusTree::getRoot() { return root; }
 
-int BPlusTree::search(node* ptr, int x)
+// Returns pointer and index of key in leaf node if found, returns -1 and nullptr if not found
+pair<node*, int> BPlusTree::search(node* ptr, int x)
 {
-    // If ptr is a leaf
-        // If k is ki in ptr
-            // Then return pi
-        // Else
-            // return null;
-    // Else, ptr is a non-leaf
-        // Find a key larger than k
-        // return search(ptr, x)
+    if (ptr->leaf == true) {
+        for (int i = 0; i < ptr->numKeys; i++) {
+            if (ptr->keys[i] == x) {
+                return pair<node*, int>(ptr, i);
+            }
+        }
+    } else {
+        for (int i = 0; i < ptr->numKeys; i++) {
+            if (ptr->keys[i] > x) {
+                return search(ptr->ptrs[i], x);
+            }
+        }
+        return search(ptr->ptrs[ptr->numKeys], x);
+    }
     
 
     // Assume we fail
-    return -1;
+    return pair<node*, int>(nullptr, -1);
 }
 
 bool BPlusTree::insert(int val)
@@ -247,17 +254,7 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
                 return true;
                 
             } else {
-                // Else
-                    // There is no room in ptr, must split internal node (Case 4)
-                    // Rearrange content int ptr and k'' into new list
-                    // Create new node at p''
-                    // Put half of list into new node
-                    // Put other half in ptr
-                    // If ptr is the root
-                        // Create new root with children ptr and p'' (w/ key kr)
-                    // Else
-                        // Return p' = p'' and k' = kr
-
+                // Must split internal node, there is no room
                 // Find where new value should go
                 index = 0;
                 for (int i = 0; i < ptr->numKeys; i++) {
@@ -389,8 +386,6 @@ int main()
     bool three = tree.insert(23);
     // cout << "Insertion attempt #3: " << three << endl;
 
-    // tree.printRoot();
-    // cout << endl;
 
     bool four = tree.insert(5);
     // cout << "Insertion attempt #4: " << four << endl;
@@ -399,24 +394,14 @@ int main()
     bool six = tree.insert(31);
     // cout << "Insertion attempt #6: " << six << endl;
 
-    // cout << "Root leaf status: " << tree.getRoot()->leaf << endl;
-    // tree.printRoot();
-    // for (int i = 0; i < tree.getRoot()->numKeys+1; i++) {
-    //     tree.printNode(tree.getRoot()->ptrs[i]);
-    // }
-    // cout << endl;
+
 
     bool seven = tree.insert(2);
     // cout << "Insertion attempt #7: " << seven << endl;
     bool eight = tree.insert(29);
     // cout << "Insertion attempt #8: " << eight << endl;
 
-    // tree.printRoot();
-    // for (int i = 0; i < tree.getRoot()->numKeys+1; i++) {
-    //     // cout << "i = " << i << endl;
-    //     tree.printNode(tree.getRoot()->ptrs[i]);
-    // }
-    // cout << endl;
+
 
     bool nine = tree.insert(50);
     // cout << "Insertion attempt #9: " << nine << endl;
@@ -430,6 +415,9 @@ int main()
     // cout << "Insertion attempt #13: " << thirteen << endl;
     bool fourteen = tree.insert(15);
     // cout << "Insertion attempt #14: " << fourteen << endl;
+
+
+    
     tree.insert(6);
     tree.insert(7);
     tree.insert(8);
@@ -441,33 +429,20 @@ int main()
     tree.insert(56);
 
     cout << endl;
-    // tree.printRoot();
-    // for (int i = 0; i < tree.getRoot()->numKeys+1; i++) {
-    //     // cout << "i = " << i << endl;
-    //     tree.printNode(tree.getRoot()->ptrs[i]);
-    // }
-    // for (int i = 0; i < tree.getRoot()->ptrs[0]->numKeys+1; i++) {
-    //     // cout << "i = " << i << endl;
-    //     tree.printNode(tree.getRoot()->ptrs[0]->ptrs[i]);
-    // }
-    // for (int i = 0; i < tree.getRoot()->ptrs[1]->numKeys+1; i++) {
-    //     // cout << "i = " << i << endl;
-    //     tree.printNode(tree.getRoot()->ptrs[1]->ptrs[i]);
-    // }
-    // for (int i = 0; i < tree.getRoot()->ptrs[2]->numKeys+1; i++) {
-    //     // cout << "i = " << i << endl;
-    //     tree.printNode(tree.getRoot()->ptrs[2]->ptrs[i]);
-    // }
-    // for (int i = 0; i < tree.getRoot()->ptrs[3]->numKeys+1; i++) {
-    //     // cout << "i = " << i << endl;
-    //     tree.printNode(tree.getRoot()->ptrs[3]->ptrs[i]);
-    // }
-    // cout << endl;
 
-    tree.insert(57);
+    // tree.insert(57);
 
     tree.printTree(tree.getRoot());
     cout << endl;
+
+    int searchKey = 11;
+    pair<node*, int> p = tree.search(tree.getRoot(), searchKey);
+
+    if (p.second != -1) {
+        cout << "Key with value " << searchKey << " found in leaf at index " << p.second << endl;
+    } else {
+        cout << "Key with value " << searchKey << " not found in tree!" << endl;
+    }
 
     cout << "Program finished." << endl;
     return 0;
