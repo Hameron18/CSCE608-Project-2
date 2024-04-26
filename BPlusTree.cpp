@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstdlib>
+#include <vector>
 #include "string.h"
 
 using namespace std;
@@ -38,7 +40,7 @@ class BPlusTree {
         bool deletion(int val);
         void printRoot();
         void printNode(node* _node);
-        void printTree(node* _node);
+        void printTree(node* _node, int level);
 };
 
 // Constructor
@@ -358,21 +360,92 @@ void BPlusTree::printNode(node* _node)
     // cout << "Finished printing." << endl;
 }
 
-void BPlusTree::printTree(node* _node)
+void BPlusTree::printTree(node* _node, int level)
 {
     if (_node != nullptr) {
+        for (int i = 0; i < level; i++) {
+            cout << "--";
+        }
         cout << "[";
-        for (int i = 0; i < _node->numKeys; i++) {
+        for (int i = 0; i < _node->numKeys-1; i++) {
             cout << _node->keys[i] << ", ";
         }
-        cout << "]" << endl;
+        cout << _node->keys[_node->numKeys-1] << "]" << endl;
 
         if (_node->leaf == false) {
             for (int i = 0; i < _node->numKeys+1; i++) {
-                printTree(_node->ptrs[i]);
+                printTree(_node->ptrs[i], level+1);
             }
         }
     }
+}
+
+BPlusTree* generateSparseTree(int numVals)
+{
+    // Generate a list of leaf nodes with desired values
+    // Create parent internal nodes for leaf nodes and store in new list
+    // Create parent internal nodes for internal nodes and store in new list
+        // Repeat until a root is created
+
+    // Create list to store initial leaf nodes
+    vector<node*> v;
+
+    // Calculate number of values per leaf
+    int r = (order + 1) / 2;
+    int count = 0;
+    int randInt = 1;
+    int size;
+
+    // Generate initial leaf nodes
+    while (count < numVals) {
+        // Create new node
+        node* newNode = new node();
+
+        // Add random values to node
+        for (int i = 0; i < r; i++) {
+            randInt += rand() % 20;
+            newNode->keys[i] = randInt;
+            newNode->numKeys++;
+            count++;
+        }
+
+        // Add node to list and connect sequence pointers
+        size = v.size();
+        if (size == 0) {
+            v.push_back(newNode);
+        } else {
+            v[size-1]->ptrs[order] = newNode;
+            v.push_back(newNode);
+        }
+    }
+
+    // Prints leaf nodes
+    // for (int i = 0; i < v.size(); i++) {
+    //     cout << "-------------" << endl;
+    //     for (int j = 0; j < v[i]->numKeys; j++) {
+    //         cout << v[i]->keys[j] << endl;
+    //     }
+    //     cout << "-------------" << endl;
+    // }
+
+    // Create internal parent nodes for leafs
+    size = v.size();
+    count = 0;
+
+    while (count < size) {
+        // Create parent node
+        node* newParent = new node();
+
+        for (int i = 0; i < r; i++) {
+            newParent->
+        }
+    }
+
+    // Create internal parent nodes for internal nodes, repeat until root is made
+
+
+    // Assume we fail
+    return nullptr;
 }
 
 int main()
@@ -428,21 +501,36 @@ int main()
     tree.insert(55);
     tree.insert(56);
 
+
+
+    tree.insert(57);
+
+
+
+    cout << endl;
+    tree.printTree(tree.getRoot(), 0);
     cout << endl;
 
-    // tree.insert(57);
 
-    tree.printTree(tree.getRoot());
-    cout << endl;
-
-    int searchKey = 11;
+    // Testing search function
+    int searchKey = 56;
     pair<node*, int> p = tree.search(tree.getRoot(), searchKey);
 
     if (p.second != -1) {
         cout << "Key with value " << searchKey << " found in leaf at index " << p.second << endl;
+        cout << endl;
     } else {
         cout << "Key with value " << searchKey << " not found in tree!" << endl;
+        cout << endl;
     }
+
+    // Testing random ints
+    // for (int i = 0; i < 5; i++) {
+    //     cout << "Random int: " << rand() % 10000 << endl;
+    // }
+    // cout << endl;
+
+    generateSparseTree(20);
 
     cout << "Program finished." << endl;
     return 0;
