@@ -50,6 +50,22 @@ BPlusTree::~BPlusTree() {}
 // Returns pointer to root
 node* BPlusTree::getRoot() { return root; }
 
+int BPlusTree::search(node* ptr, int x)
+{
+    // If ptr is a leaf
+        // If k is ki in ptr
+            // Then return pi
+        // Else
+            // return null;
+    // Else, ptr is a non-leaf
+        // Find a key larger than k
+        // return search(ptr, x)
+    
+
+    // Assume we fail
+    return -1;
+}
+
 bool BPlusTree::insert(int val)
 {
     pair<node*, int>* p1 = new pair<node*, int>(nullptr, val);
