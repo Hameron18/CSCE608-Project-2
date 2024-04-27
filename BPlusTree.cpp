@@ -38,8 +38,9 @@ class BPlusTree {
         pair<node*, int> search(node* ptr, int x);
         int rangeSearch(int* ptr, int x, int y);
         bool insert(int val);
+        bool Delete(int val);
         bool insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2);
-        bool deletion(int val);
+        bool deletion(node* ptr, pair<node*, int>* p1, bool* belowMin);
         void printRoot();
         void printNode(node* _node);
         void printTree(node* _node, int level);
@@ -85,6 +86,121 @@ bool BPlusTree::insert(int val)
     pair<node*, int>* p1 = new pair<node*, int>(nullptr, val);
     pair<node*, int>* p2 = new pair<node*, int>(nullptr, 0);
     return insertion(this->getRoot(), p1, p2);
+}
+
+bool BPlusTree::Delete(int val)
+{
+    pair<node*, int>* p = new pair<node*, int>(nullptr, val);
+    bool* bm = new bool(false);
+    return deletion(this->getRoot(), p, bm);
+}
+
+bool BPlusTree::deletion(node* ptr, pair<node*, int>* p1, bool* belowMin)
+{
+    node* p = p1->first;
+    int k = p1->second;
+
+    // Check if ptr is a leaf (Case 1)
+    if (ptr->leaf == true) {
+        // Delete k from ptr
+        bool found = false;
+        for (int i = 0; i < ptr->numKeys; i++) {
+            if (ptr->keys[i] == k) {
+                // Key was found
+                found = true;
+
+                // Loop through remaining values and shift backwards
+                for (int j = i+1; j < ptr->numKeys; j++) {
+                    ptr->keys[j-1] = ptr->keys[j];
+                }
+                ptr->numKeys--;
+                
+                // Stop checking for key
+                break;
+            }
+        }
+
+        // If key was not found, return false
+        if (found == false) {
+            *belowMin = false;
+            return false;
+        }
+
+        // If ptr has at least floor((n+1)/2) pointers OR ptr is the root, return belowMin = false
+        int r = floor((order+1)/2);
+        if ((ptr == this->getRoot()) || (ptr->numKeys >= r)) {
+            *belowMin = false;
+            return true;
+        } else {
+            *belowMin = true;
+            return true;
+        }
+    } else { // Deleting at a non-leaf (Case 2)
+        // Find key in ptr s.t. k < ki
+        int index = 0;
+        for (int i = 0; i < ptr->numKeys; i++) {
+            if (k < ptr->keys[i]) {
+                break;
+            }
+            index++;
+        }
+
+        // Delete at pointer for ki with a new belowMin variable
+        bool* bm = new bool(false);
+        bool success = deletion(ptr->ptrs[index], p1, bm);
+
+        // Calculate minimum number of pointers
+        int minPointers = ceil((order+1)/2);
+
+        if (*bm == false) { // The deleted node still had enough keys after deletion
+            *belowMin = false;
+            if (success == true) {
+                return true;
+            } else {
+                return false;
+            }
+        } else if (index == 0) { // The deleted node did not have enough keys left after deletion
+            // Current node is the left most node, check right sibling only
+            if ((ptr->ptrs[index+1]->numKeys + 1) > minPointers) {
+                // Right sibling can share
+                // Move one pointer-key pair from sibling to pi
+                
+            }
+
+        } else if (index == ptr->numKeys) {
+            // Current node is the right most node, check left sibling only
+            if ((ptr->ptrs[index-1]->numKeys + 1) > minPointers) {
+                // Left sibling can share
+                // Move one pointer-key pair from sibling to pi
+            }
+
+        } else if ((ptr->ptrs[index-1]->numKeys + 1) > minPointers) {
+            // Left sibling has extra pointers
+
+        } else if ((ptr->ptrs[index+1]->numKeys + 1) > minPointers) {
+            // Right sibling has extra pointers
+
+        } else { // No siblings have extra pointers to share
+            // Combine pi with an adjacent sibling of pi into a single node
+            // If ptr is the root with only one pointer
+            if ((ptr == this->getRoot()) && (ptr->numKeys == 1)) { // TODO: DOUBLE CHECK, this could be wrong
+                ptr = ptr->ptrs[index];
+                *belowMin = false;
+                return success;
+            } 
+
+            // If ptr has at least the minimum number of pointers OR ptr is the root, return belowMin = false
+            if ((ptr->numKeys+1 >= minPointers) || (ptr == this->getRoot())) {
+                *belowMin = false;
+                return success;
+            } else {
+                *belowMin = true;
+                return success;
+            }
+        }
+    }
+
+    return false;
 }
 
 bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
@@ -833,7 +949,7 @@ int main()
     // cin >> input;
     // generateSparseTree(input);
 
-    generateDenseTree(75);    
+    generateDenseTree(20);    
 
     cout << "Program finished." << endl;
     return 0;
