@@ -548,10 +548,9 @@ node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
     int r = ceil((order+1.0) / 2.0); // min number of pointers for non-leaf is ceil[(n+1)/2]
     int count = 0;
     int size = v.size();
-    int limit = order;
+    int limit = order+1;
     bool extraParent;
-
-    cout << "size = " << size << endl;
+    node* sparseParent;
 
     if ((size - r) < r) {
         // Creating root
@@ -567,6 +566,10 @@ node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
         node* newParent = new node();
         newParent->leaf = false;
 
+        if ((size - count) < limit) {
+            limit = size - count;
+        }
+
         // Add pointers to new parent node
         for (int i = 0; i < limit; i++) {
             newParent->ptrs[i] = v[count];
@@ -575,8 +578,8 @@ node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
                 newParent->numKeys++;
             }
             count++;
-        }
-        
+        } 
+
         extraParent = false;
 
         // If there is not enough children left for a new parent, take children from previous parent and create new parent
@@ -585,19 +588,22 @@ node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
             int n = r - (size - count);
 
             // Create new parent
-            node* sparseParent = new node();
+            sparseParent = new node();
 
             // Transfer children from previous parent to current parent
             int j = 0;
             for (int i = order-n; i < order; i++) {
-                sparseParent->keys[j] = newParent->keys[i];
-                sparseParent->numKeys++;
+                if (j != 0) {
+                    sparseParent->keys[j-1] = newParent->keys[i];
+                    sparseParent->numKeys++;
+                }
+                sparseParent->ptrs[j] = newParent->ptrs[i+1];
                 newParent->numKeys--;
                 j++;
             }
 
             // Calculate new index in leaf
-            int offset = n;
+            int offset = n-1;
             int bound = size - count;
             
             // Add remaining values to sparse parent
@@ -607,10 +613,18 @@ node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
                 sparseParent->numKeys++;
                 count++;
             }
+
+            // Set extra parent flag
+            extraParent = true;
         }
 
         // Add parent nodes to new list
         v2.push_back(newParent);
+
+        // Add sparse parent if it exists
+        if (extraParent == true) {
+            v2.push_back(sparseParent);
+        }
     }
 
     // // Prints parent nodes
@@ -673,6 +687,7 @@ BPlusTree* generateDenseTree(int numVals)
 
             // Create new leaf
             node* sparseLeaf = new node();
+            sparseLeaf->leaf = true;
 
             // Transfer nodes from previous leaf to current leaf
             int j = 0;
@@ -719,11 +734,11 @@ BPlusTree* generateDenseTree(int numVals)
         }
     }
 
-    for (int i = 0; i < v.size(); i++) {
-        cout << "-----------" << endl;
-        newTree->printTree(v[i], 0);
-        cout << "-----------" << endl;
-    }
+    // for (int i = 0; i < v.size(); i++) {
+    //     cout << "-----------" << endl;
+    //     newTree->printTree(v[i], 0);
+    //     cout << "-----------" << endl;
+    // }
 
     // Create internal parent nodes for internal nodes, repeat until root is made
     cout << "Creating internal nodes..." << endl;
@@ -818,8 +833,7 @@ int main()
     // cin >> input;
     // generateSparseTree(input);
 
-    generateDenseTree(13);
-    
+    generateDenseTree(75);    
 
     cout << "Program finished." << endl;
     return 0;
