@@ -7,7 +7,7 @@
 using namespace std;
  
 string treeType = "dense";
-int order = 3;
+int order = 13;
 
 struct node {
     int* keys;
@@ -36,7 +36,7 @@ class BPlusTree {
         node* getRoot();
         void setRoot(node* _root);
         pair<node*, int> search(node* ptr, int x);
-        int rangeSearch(int* ptr, int x, int y);
+        pair<node*, int>** rangeSearch(node* ptr, int x, int y);
         bool insert(int val);
         bool Delete(int val);
         bool insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2);
@@ -62,12 +62,16 @@ void BPlusTree::setRoot(node* _root) { root = _root; }
 pair<node*, int> BPlusTree::search(node* ptr, int x)
 {
     if (ptr->leaf == true) {
+        cout << "Leaf Node : ";
+        this->printNode(ptr);
         for (int i = 0; i < ptr->numKeys; i++) {
             if (ptr->keys[i] == x) {
                 return pair<node*, int>(ptr, i);
             }
         }
     } else {
+        cout << "Internal Node : ";
+        this->printNode(ptr);
         for (int i = 0; i < ptr->numKeys; i++) {
             if (ptr->keys[i] > x) {
                 return search(ptr->ptrs[i], x);
@@ -79,6 +83,83 @@ pair<node*, int> BPlusTree::search(node* ptr, int x)
 
     // Assume we fail
     return pair<node*, int>(nullptr, -1);
+}
+
+pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
+{
+    pair<node*, int>** records = nullptr;
+
+    if (ptr->leaf == true) {
+        for (int i = 0; i < ptr->numKeys; i++) {
+            if (ptr->keys[i] >= x) {
+                cout << "Found starting point" << endl;
+                vector<node*> pVec;
+                vector<int> kVec;
+
+                cout << "Pushing back initial values of current leaf" << endl;
+                node* curr = ptr;
+                bool end = false;
+                for (int j = i; j < curr->numKeys; j++) {
+                    if (curr->keys[j] > y) {
+                        cout << "Range limit reached 1" << endl;
+                        end = true;
+                        break;
+                    }
+                    pVec.push_back(curr->ptrs[j]);
+                    kVec.push_back(curr->keys[j]);
+                }
+
+                cout << "Pushing back values from other leaves" << endl;
+                while (true) {
+                    if (end == true) {
+                        cout << "Range limit reached 2" << endl;
+                        break;
+                    }
+                    if (curr->ptrs[curr->numKeys] == nullptr) {
+                        cout << "Next pointer is nullptr!" << endl;
+                        break;
+                    }
+                    curr = curr->ptrs[curr->numKeys];
+                    for (int j = 0; j < curr->numKeys; j++) {
+                        if (curr->keys[j] > y) {
+                            cout << "Range limit reached 3" << endl;
+                            end = true;
+                            break;
+                        }
+                        pVec.push_back(curr->ptrs[j]);
+                        kVec.push_back(curr->keys[j]);
+                    }
+                }
+
+                cout << "Creating list of records" << endl;
+                records = new pair<node*, int>*[kVec.size()+1]();
+                pair<node*, int>* p;
+
+                cout << "Filling list of records" << endl;
+                for (int j = 0; j < kVec.size(); j++) {
+                    cout << "j = " << j << endl;
+                    p = new pair<node*, int>();
+                    p->first = pVec[j];
+                    p->second = kVec[j];
+                    records[j] = p;
+                }
+                
+                cout << "Setting last value as null for printing" << endl;
+                records[kVec.size()] = nullptr;
+                
+                return records;
+            }
+        }
+    } else {
+        for (int i = 0; i < ptr->numKeys; i++) {
+            if (ptr->keys[i] >= x) {
+                return rangeSearch(ptr->ptrs[i], x, y);
+            }
+        }
+        return rangeSearch(ptr->ptrs[ptr->numKeys], x, y);
+    }
+
+    return records;
 }
 
 bool BPlusTree::insert(int val)
@@ -164,7 +245,23 @@ bool BPlusTree::deletion(node* ptr, pair<node*, int>* p1, bool* belowMin)
             if ((ptr->ptrs[index+1]->numKeys + 1) > minPointers) {
                 // Right sibling can share
                 // Move one pointer-key pair from sibling to pi
-                
+                if (ptr->ptrs[index]->leaf == true) { // Check if re-distribution is at leaf level
+                    // Move first key in next leaf to current leaf
+                    ptr->ptrs[index]->keys[ptr->ptrs[index]->numKeys] = ptr->ptrs[index+1]->keys[0];
+                    ptr->ptrs[index]->numKeys++;
+
+                    // Shift keys in next leaf backwards
+                    for (int i = 1; i < ptr->ptrs[index+1]->numKeys; i++) {
+                        ptr->ptrs[index+1]->keys[i-1] = ptr->ptrs[index+1]->keys[i];
+                    }
+                    ptr->ptrs[index+1]->numKeys--;
+
+                    // Update key value in internal node
+                    ptr->keys[0] = ptr->ptrs[index+1]->keys[0];
+
+                } else { // Re-distribution is for internal nodes
+
+                }
             }
 
         } else if (index == ptr->numKeys) {
@@ -172,13 +269,34 @@ bool BPlusTree::deletion(node* ptr, pair<node*, int>* p1, bool* belowMin)
             if ((ptr->ptrs[index-1]->numKeys + 1) > minPointers) {
                 // Left sibling can share
                 // Move one pointer-key pair from sibling to pi
+                if (ptr->ptrs[index]->leaf == true) { // Check if re-distribution is at leaf level
+                    
+                } else { // Re-distribution is for internal nodes
+
+                }
+
+                
             }
 
         } else if ((ptr->ptrs[index-1]->numKeys + 1) > minPointers) {
             // Left sibling has extra pointers
+            // Move one pointer-key pair from sibling to pi
+            if (ptr->ptrs[index]->leaf == true) { // Check if re-distribution is at leaf level
+                
+            } else { // Re-distribution is for internal nodes
+
+            }
+
 
         } else if ((ptr->ptrs[index+1]->numKeys + 1) > minPointers) {
             // Right sibling has extra pointers
+            // Move one pointer-key pair from sibling to pi
+            if (ptr->ptrs[index]->leaf == true) { // Check if re-distribution is at leaf level
+                
+            } else { // Re-distribution is for internal nodes
+
+            }
+            
 
         } else { // No siblings have extra pointers to share
             // Combine pi with an adjacent sibling of pi into a single node
@@ -474,10 +592,10 @@ void BPlusTree::printNode(node* _node)
     int n = _node->numKeys;
 
     cout << "[";
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n-1; i++) {
         cout << ks[i] << ", ";
     }
-    cout << "]" << endl;
+    cout << ks[n-1] << "]" << endl;
     // cout << "Finished printing." << endl;
 }
 
@@ -586,7 +704,7 @@ node* sparseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
     return sparseTreeHelper(newTree, v2, level+1);
 }
 
-BPlusTree* generateSparseTree(int numVals)
+BPlusTree* generateSparseTree(int numVals, int* vals)
 {   
     // Create new B+ Tree
     BPlusTree* newTree = new BPlusTree();
@@ -609,13 +727,20 @@ BPlusTree* generateSparseTree(int numVals)
 
         // Add random values to node
         for (int i = 0; i < r; i++) {
+            // Used values from a collection for tree
             if (count == numVals) { break; }
-            randInt = rand() % 20;
-            if (randInt == 0) { randInt++; }
-            randVal += randInt;
-            newNode->keys[i] = randVal;
+            newNode->keys[i] = vals[count];
             newNode->numKeys++;
             count++;
+
+            // Randomly generates values for tree
+            // if (count == numVals) { break; }
+            // randInt = rand() % 20;
+            // if (randInt == 0) { randInt++; }
+            // randVal += randInt;
+            // newNode->keys[i] = randVal;
+            // newNode->numKeys++;
+            // count++;
         }
 
         // If there is not enough values left for a new leaf, append remaining values to current leaf
@@ -626,12 +751,18 @@ BPlusTree* generateSparseTree(int numVals)
 
             // Add remaining values to leaf
             for (int i = 0; i < bound; i++) {
-                randInt = rand() % 20;
-                if (randInt == 0) { randInt++; }
-                randVal += randInt;
-                newNode->keys[i+offset] = randVal;
+                // Uses values from a collection for tree
+                newNode->keys[i+offset] = vals[count];
                 newNode->numKeys++;
                 count++;
+
+                // Randomly generates values for tree
+                // randInt = rand() % 20;
+                // if (randInt == 0) { randInt++; }
+                // randVal += randInt;
+                // newNode->keys[i+offset] = randVal;
+                // newNode->numKeys++;
+                // count++;
             }
         }
 
@@ -648,7 +779,7 @@ BPlusTree* generateSparseTree(int numVals)
     // Create internal parent nodes for internal nodes, repeat until root is made
     cout << "Creating internal nodes..." << endl;
     newTree->setRoot(sparseTreeHelper(newTree, v, 0));
-    newTree->printTree(newTree->getRoot(), 0);
+    // newTree->printTree(newTree->getRoot(), 0);
 
     return newTree;
 }
@@ -761,7 +892,7 @@ node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
     return denseTreeHelper(newTree, v2, level+1);
 }
 
-BPlusTree* generateDenseTree(int numVals)
+BPlusTree* generateDenseTree(int numVals, int* vals)
 {
     // Create new B+ Tree
     BPlusTree* newTree = new BPlusTree();
@@ -785,13 +916,20 @@ BPlusTree* generateDenseTree(int numVals)
 
         // Add random values to node
         for (int i = 0; i < order; i++) {
+            // Uses values from a collection for tree
             if (count == numVals) { break; }
-            randInt = rand() % 20;
-            if (randInt == 0) { randInt++; }
-            randVal += randInt;
-            newNode->keys[i] = randVal;
+            newNode->keys[i] = vals[count];
             newNode->numKeys++;
             count++;
+            
+            // Randomly generates values for tree
+            // if (count == numVals) { break; }
+            // randInt = rand() % 20;
+            // if (randInt == 0) { randInt++; }
+            // randVal += randInt;
+            // newNode->keys[i] = randVal;
+            // newNode->numKeys++;
+            // count++;
         }
 
         extraLeaf = false;
@@ -820,12 +958,18 @@ BPlusTree* generateDenseTree(int numVals)
 
             // Add remaining values to sparese leaf
             for (int i = 0; i < bound; i++) {
-                randInt = rand() % 20;
-                if (randInt == 0) { randInt++; }
-                randVal += randInt;
-                sparseLeaf->keys[i+offset] = randVal;
+                // Uses values from a collection for tree
+                sparseLeaf->keys[i+offset] = vals[count];
                 sparseLeaf->numKeys++;
                 count++;
+
+                // Randomly generates values for tree
+                // randInt = rand() % 20;
+                // if (randInt == 0) { randInt++; }
+                // randVal += randInt;
+                // sparseLeaf->keys[i+offset] = randVal;
+                // sparseLeaf->numKeys++;
+                // count++;
             }
 
             // Make newNode point to sparseLeaf
@@ -859,9 +1003,31 @@ BPlusTree* generateDenseTree(int numVals)
     // Create internal parent nodes for internal nodes, repeat until root is made
     cout << "Creating internal nodes..." << endl;
     newTree->setRoot(denseTreeHelper(newTree, v, 0));
-    newTree->printTree(newTree->getRoot(), 0);
+    // newTree->printTree(newTree->getRoot(), 0);
 
     return newTree;
+}
+
+int* generateRecords(int numVals)
+{
+    int* collection = new int[numVals];
+
+    int randInt = 100000;
+    int randVal = 100000;
+    for (int i = 0; i < numVals; i++) {
+        if (i == numVals) { break; }
+        randInt = rand() % 20;
+        if (randInt == 0) { randInt++; }
+        randVal += randInt;
+        collection[i] = randVal;
+    }
+
+    // Prints records
+    // for (int i = 0; i < numVals; i++) {
+    //     cout << "[" << collection[i] << "]" << endl;
+    // }
+
+    return collection;
 }
 
 int main()
@@ -948,8 +1114,58 @@ int main()
     // int input;
     // cin >> input;
     // generateSparseTree(input);
+    
+    int numVals = 10000;
+    int* records = generateRecords(numVals);
+    BPlusTree* tree = generateSparseTree(numVals, records);
 
-    generateDenseTree(20);    
+    int key = 100000 + (rand() % 100000);
+    key = 100000 + (rand() % 100000);
+    key = 100000 + (rand() % 100000);
+    key = 100000 + (rand() % 100000);
+    key = 100000 + (rand() % 100000);
+    key = 185322;
+    cout << "\n\n\n\n" << endl;
+    cout << "Searching for key = " << key << endl;
+    pair<node*, int> p = tree->search(tree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+
+    // tree->insert(181);
+    // tree->printTree(tree->getRoot(), 0);
+
+    // cout << "Starting range search..." << endl;
+    // pair<node*, int>** vals = tree->rangeSearch(tree->getRoot(), 99, 164);
+    // cout << "Finished range search!" << endl;
+
+    // int index = 0;
+    // while (vals[index] != nullptr) {
+    //     cout << "[" << vals[index]->second << "]" << endl;
+    //     index++;
+    // }
+
+    // cout << endl;
+    // cout << "Deleting key 152..." << endl;
+    // tree->Delete(152);
+    // tree->printTree(tree->getRoot(), 0);
+
+    // cout << endl;
+    // cout << "Deleting key 139..." << endl;
+    // tree->Delete(139);
+    // tree->printTree(tree->getRoot(), 0);
+
+    // cout << endl;
+    // cout << "Deleting key 180..." << endl;
+    // tree->Delete(180);
+    // tree->printTree(tree->getRoot(), 0);
+
+    // cout << endl;
+    // cout << "Deleting key 164..." << endl;
+    // tree->Delete(164);
+    // tree->printTree(tree->getRoot(), 0);
 
     cout << "Program finished." << endl;
     return 0;
