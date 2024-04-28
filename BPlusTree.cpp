@@ -92,16 +92,16 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
     if (ptr->leaf == true) {
         for (int i = 0; i < ptr->numKeys; i++) {
             if (ptr->keys[i] >= x) {
-                cout << "Found starting point" << endl;
+                // cout << "Found starting point" << endl;
                 vector<node*> pVec;
                 vector<int> kVec;
 
-                cout << "Pushing back initial values of current leaf" << endl;
+                // cout << "Pushing back initial values of current leaf" << endl;
                 node* curr = ptr;
                 bool end = false;
                 for (int j = i; j < curr->numKeys; j++) {
                     if (curr->keys[j] > y) {
-                        cout << "Range limit reached 1" << endl;
+                        // cout << "Range limit reached 1" << endl;
                         end = true;
                         break;
                     }
@@ -109,20 +109,20 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
                     kVec.push_back(curr->keys[j]);
                 }
 
-                cout << "Pushing back values from other leaves" << endl;
+                // cout << "Pushing back values from other leaves" << endl;
                 while (true) {
                     if (end == true) {
-                        cout << "Range limit reached 2" << endl;
+                        // cout << "Range limit reached 2" << endl;
                         break;
                     }
                     if (curr->ptrs[order] == nullptr) {
-                        cout << "Next pointer is nullptr!" << endl;
+                        // cout << "Next pointer is nullptr!" << endl;
                         break;
                     }
                     curr = curr->ptrs[order];
                     for (int j = 0; j < curr->numKeys; j++) {
                         if (curr->keys[j] > y) {
-                            cout << "Range limit reached 3" << endl;
+                            // cout << "Range limit reached 3" << endl;
                             end = true;
                             break;
                         }
@@ -131,20 +131,19 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
                     }
                 }
 
-                cout << "Creating list of records" << endl;
+                // cout << "Creating list of records" << endl;
                 records = new pair<node*, int>*[kVec.size()+1]();
                 pair<node*, int>* p;
 
-                cout << "Filling list of records" << endl;
+                // cout << "Filling list of records" << endl;
                 for (int j = 0; j < kVec.size(); j++) {
-                    cout << "j = " << j << endl;
                     p = new pair<node*, int>();
                     p->first = pVec[j];
                     p->second = kVec[j];
                     records[j] = p;
                 }
                 
-                cout << "Setting last value as null for printing" << endl;
+                // cout << "Setting last value as null for printing" << endl;
                 records[kVec.size()] = nullptr;
                 
                 return records;
@@ -1137,15 +1136,15 @@ int main()
     // tree->insert(181);
     // tree->printTree(tree->getRoot(), 0);
 
-    // cout << "Starting range search..." << endl;
-    // pair<node*, int>** vals = tree->rangeSearch(tree->getRoot(), 185100, 185400);
-    // cout << "Finished range search!" << endl;
+    cout << "Starting range search..." << endl;
+    pair<node*, int>** vals = tree->rangeSearch(tree->getRoot(), 185100, 185200);
+    cout << "Finished range search!" << endl;
 
-    // int index = 0;
-    // while (vals[index] != nullptr) {
-    //     cout << "[" << vals[index]->second << "]" << endl;
-    //     index++;
-    // }
+    int index = 0;
+    while (vals[index] != nullptr) {
+        cout << "[" << vals[index]->second << "]" << endl;
+        index++;
+    }
 
     // cout << endl;
     // cout << "Deleting key 152..." << endl;
