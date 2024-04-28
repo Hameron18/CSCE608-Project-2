@@ -115,11 +115,11 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
                         cout << "Range limit reached 2" << endl;
                         break;
                     }
-                    if (curr->ptrs[curr->numKeys] == nullptr) {
+                    if (curr->ptrs[order] == nullptr) {
                         cout << "Next pointer is nullptr!" << endl;
                         break;
                     }
-                    curr = curr->ptrs[curr->numKeys];
+                    curr = curr->ptrs[order];
                     for (int j = 0; j < curr->numKeys; j++) {
                         if (curr->keys[j] > y) {
                             cout << "Range limit reached 3" << endl;
@@ -1125,7 +1125,7 @@ int main()
     key = 100000 + (rand() % 100000);
     key = 100000 + (rand() % 100000);
     key = 185322;
-    cout << "\n\n\n\n" << endl;
+    cout << "\n\n" << endl;
     cout << "Searching for key = " << key << endl;
     pair<node*, int> p = tree->search(tree->getRoot(), key);
     if (p.second == -1) {
@@ -1138,7 +1138,7 @@ int main()
     // tree->printTree(tree->getRoot(), 0);
 
     // cout << "Starting range search..." << endl;
-    // pair<node*, int>** vals = tree->rangeSearch(tree->getRoot(), 99, 164);
+    // pair<node*, int>** vals = tree->rangeSearch(tree->getRoot(), 185100, 185400);
     // cout << "Finished range search!" << endl;
 
     // int index = 0;
