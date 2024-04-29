@@ -336,15 +336,6 @@ void onePassNaturalJoin(int _bucketID)
             readFromDisk(disk->at(i)->id);
         }
     }
-
-    // For each S block in Si bucket
-        // For each block in bucket Ri
-            // Compare tuples in S block with tuples in R
-            // If a tuple has the same B-value
-                // If no space in the output block
-                    // Write output block to disk
-                    // Create new output block
-                // Join tuples and put in th output block 
     
     for (int i = 0; i < disk->size(); i++) {
         if ((disk->at(i)->inBucket == true) && (disk->at(i)->bucketID == _bucketID) && (disk->at(i)->relationName == "S")) {
@@ -415,8 +406,6 @@ void onePassNaturalJoin(int _bucketID)
                 }
                 count++;
             }
-
-            // break;
         }
     }
 
@@ -570,7 +559,6 @@ void twoPassHashingNaturalJoin()
         // call the one pass algorithm on the R_i bucket and S_i bucket
     for (int i = 0; i < M-1; i++) {
         onePassNaturalJoin(i);
-        // break;
     }
 }
 
@@ -740,6 +728,12 @@ int main()
     // }
     // cout << endl;
 
+    cout << "Total number of reads: " << numDiskReads << endl;
+    cout << "Total number of writes: " << numDiskWrites << endl;
+
+    cout << endl;
+    cout << "Program finished." << endl;
+    return 0;
 
     // cout << "Printing disk blocks..." << endl;
     // for (int i = 0; i < disk->size(); i++) {
@@ -803,11 +797,4 @@ int main()
     //     }
     // }
     // cout << endl;
-
-    cout << "Total number of reads: " << numDiskReads << endl;
-    cout << "Total number of writes: " << numDiskWrites << endl;
-
-    cout << endl;
-    cout << "Program finished." << endl;
-    return 0;
 }
