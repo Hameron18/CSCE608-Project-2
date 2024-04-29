@@ -146,7 +146,7 @@ void writeToDisk(int index)
     numDiskWrites++;
 
     // Check if memory block at given index has data
-    if (mainMemory[index].first == 1) {
+    if ((mainMemory[index].first == 1) && (mainMemory[index].second->numTuples > 0)) {
         int id = mainMemory[index].second->id;
         if ((id < disk->size()) && (id >= 0)) {
             // Block exists in the disk, write data to disk
@@ -160,7 +160,7 @@ void writeToDisk(int index)
         } else {
             // Block doesn't exist in the disk yet
             block* b = new block();
-            b = mainMemory[index].second;
+            *b = *(mainMemory[index].second);
             b->id = disk->size();
             disk->push_back(b);
 
@@ -173,6 +173,7 @@ void writeToDisk(int index)
     } else {
         // Data at requested block doesn't exist
         cout << "BLOCK DOES NOT HAVE ANY DATA" << endl;
+        numDiskWrites--;
         return;
     }
 }
@@ -193,9 +194,12 @@ void readToMemBlock(int id, int memIndex)
         cout << "NOT ENOUGH SPACE IN REQUESTED BLOCK" << endl;
         
         // Write block to the disk
-        writeToDisk(memIndex);
+        // writeToDisk(memIndex);
+        mainMemory[memIndex].first = 0;
+        mainMemory[memIndex].second = new block();
+        freeBlocks++;
 
-
+        // Read in new block from disk
         mainMemory[memIndex].first = 1;
         *(mainMemory[memIndex].second) = *(disk->at(id));
         freeBlocks--;
@@ -227,6 +231,7 @@ void readFromDisk(int id)
     } else {
         // No free blocks to write to, must free memory
         cout << "NOT ENOUGH SPACE FOR READ" << endl;
+        numDiskReads--;
         return;
     }
 }
@@ -285,25 +290,34 @@ void twoPassHashingNaturalJoin()
 {
     int bucketNum;
     int diskSize = disk->size();
+    int readBlock = 14;
 
-    // Clear the main memory in preparation to hold M-1 buckets
+    // Clear the main memory in preparation to hold M-1 buckets of S
     clearMainMemory();
+
+    // Set buckets in main memory
+    for (int i = 0; i < M-1; i++) {
+        mainMemory[i].second->inBucket = true;
+        mainMemory[i].second->bucketID = i;
+        mainMemory[i].second->relationName = "S";
+    }
 
     // Hash each tuple in S
     for (int i = 0; i < diskSize; i++) {
         if (disk->at(i)->relationName == "S") {
             // Read in disk block to memory block 15
-            readToMemBlock(i, 14);
+            readToMemBlock(i, readBlock);
 
-            for (int j = 0; j < disk->at(i)->numTuples; j++) {
-                bucketNum = hashFunction(get<1>(disk->at(i)->tuples[j]));
+            for (int j = 0; j < mainMemory[readBlock].second->numTuples; j++) {
+                bucketNum = hashFunction(get<1>(mainMemory[readBlock].second->tuples[j]));
 
                 // Check if memory block is empty
                 if (mainMemory[bucketNum].first == 1) {
                     // Check if there is space for tuple in the bucket's block
-                    if (mainMemory[bucketNum].second->numTuples = 8) {
+                    if (mainMemory[bucketNum].second->numTuples < 8) {
                         // There is space in block
-                        mainMemory[bucketNum].second->tuples[mainMemory[bucketNum].second->numTuples] = disk->at(i)->tuples[j];
+                        mainMemory[bucketNum].second->tuples[mainMemory[bucketNum].second->numTuples] = mainMemory[readBlock].second->tuples[j];
+                        mainMemory[bucketNum].second->numTuples++;
                     } else {
                         // There is NOT space in block
                         // Write bucket block to disk
@@ -314,11 +328,12 @@ void twoPassHashingNaturalJoin()
                         b.inBucket = true;
                         b.bucketID = bucketNum;
                         b.relationName = "S";
-                        b.tuples[0] = disk->at(i)->tuples[j];
+                        b.tuples[0] = mainMemory[readBlock].second->tuples[j];
                         b.numTuples++;
 
                         mainMemory[bucketNum].first = 1;
                         *(mainMemory[bucketNum].second) = b;
+                        freeBlocks--;
                     }
                 } else {
                     // Memory block is empty, create a new block
@@ -326,17 +341,89 @@ void twoPassHashingNaturalJoin()
                     b.inBucket = true;
                     b.bucketID = bucketNum;
                     b.relationName = "S";
-                    b.tuples[0] = disk->at(i)->tuples[j];
+                    b.tuples[0] = mainMemory[readBlock].second->tuples[j];
                     b.numTuples++;
 
                     mainMemory[bucketNum].first = 1;
                     *(mainMemory[bucketNum].second) = b;
+                    freeBlocks--;
                 }
             }
         }
     }
 
+    // Write all remaining buckets for S back to disk
+    for (int i = 0; i < M-1; i++) {
+        writeToDisk(i);
+    }
+
+    // Clear read block in main memory
+    clearMemoryBlock(M-1);
+
+    // Set buckets in main memory
+    for (int i = 0; i < M-1; i++) {
+        mainMemory[i].second->inBucket = true;
+        mainMemory[i].second->bucketID = i;
+        mainMemory[i].second->relationName = "R";
+    }
+
     // Hash each tuple in R
+    for (int i = 0; i < diskSize; i++) {
+        if (disk->at(i)->relationName == "R") {
+            // Read in disk block to memory block 15
+            readToMemBlock(i, readBlock);
+
+            for (int j = 0; j < mainMemory[readBlock].second->numTuples; j++) {
+                bucketNum = hashFunction(get<1>(mainMemory[readBlock].second->tuples[j]));
+
+                // Check if memory block is empty
+                if (mainMemory[bucketNum].first == 1) {
+                    // Check if there is space for tuple in the bucket's block
+                    if (mainMemory[bucketNum].second->numTuples < 8) {
+                        // There is space in block
+                        mainMemory[bucketNum].second->tuples[mainMemory[bucketNum].second->numTuples] = mainMemory[readBlock].second->tuples[j];
+                        mainMemory[bucketNum].second->numTuples++;
+                    } else {
+                        // There is NOT space in block
+                        // Write bucket block to disk
+                        writeToDisk(bucketNum);
+
+                        // Create new block for memory block
+                        block b;
+                        b.inBucket = true;
+                        b.bucketID = bucketNum;
+                        b.relationName = "R";
+                        b.tuples[0] = mainMemory[readBlock].second->tuples[j];
+                        b.numTuples++;
+
+                        mainMemory[bucketNum].first = 1;
+                        *(mainMemory[bucketNum].second) = b;
+                        freeBlocks--;
+                    }
+                } else {
+                    // Memory block is empty, create a new block
+                    block b;
+                    b.inBucket = true;
+                    b.bucketID = bucketNum;
+                    b.relationName = "R";
+                    b.tuples[0] = mainMemory[readBlock].second->tuples[j];
+                    b.numTuples++;
+
+                    mainMemory[bucketNum].first = 1;
+                    *(mainMemory[bucketNum].second) = b;
+                    freeBlocks--;
+                }
+            }
+        }
+    }
+
+    // Write all remaining buckets for R back to disk
+    for (int i = 0; i < M-1; i++) {
+        writeToDisk(i);
+    }
+
+    // Clear read block in main memory
+    clearMemoryBlock(M-1);
 
     // For each bucket index i
         // call the one pass algorithm on the R_i bucket and S_i bucket
@@ -355,13 +442,16 @@ int main()
     generateRelationS(disk);
     generateRelationR(disk);
 
-    cout << "Reading from the disk..." << endl;
+    cout << "Initial number of reads: " << numDiskReads << endl;
+    cout << "Initial number of writes: " << numDiskWrites << endl;
+
+    /*cout << "Reading from the disk..." << endl;
     readFromDisk(0);
     for (int i = 1; i < M; i++) {
         readFromDisk(i);
     }
 
-    printMainMemory();
+    // printMainMemory();
 
     cout << "Editing main memory..." << endl;
     tuple<string, int, string> t = make_tuple("", get<1>(mainMemory[0].second->tuples[0]), "testing write");
@@ -375,28 +465,64 @@ int main()
         mainMemory[1].second->numTuples++;
     }
     mainMemory[1].second->relationName = "A";
+    freeBlocks--;
 
-    printMainMemory();
+    // printMainMemory();
 
     cout << "Writing to the disk..." << endl;
     writeToDisk(0);
     writeToDisk(1);
-    writeToDisk(2);
+    writeToDisk(2);*/
 
-    printMainMemory();
-
-    clearMainMemory();
-
-    printMainMemory();
+    cout << "Starting two-pass natural join..." << endl;
+    twoPassHashingNaturalJoin();
 
 
-    cout << "Printing disk blocks..." << endl;
-    for (int i = 0; i < disk->size(); i++) {
-        cout << "Block #" << disk->at(i)->id << " for relation " << disk->at(i)->relationName << ":" << endl;
-        for (int j = 0; j < disk->at(i)->numTuples; j++) {
-            cout << "-- [" << get<0>(disk->at(i)->tuples[j]) << ", " << get<1>(disk->at(i)->tuples[j]) << ", " << get<2>(disk->at(i)->tuples[j]) << "]" << endl;
+    // cout << "Printing disk blocks..." << endl;
+    // for (int i = 0; i < disk->size(); i++) {
+    //     if (disk->at(i)->inBucket == true) {
+    //         cout << "Block #" << disk->at(i)->id << " for relation " << disk->at(i)->relationName << ":" << endl;
+    //         for (int j = 0; j < disk->at(i)->numTuples; j++) {
+    //             cout << "-- [" << get<0>(disk->at(i)->tuples[j]) << ", " << get<1>(disk->at(i)->tuples[j]) << ", " << get<2>(disk->at(i)->tuples[j]) << "]" << endl;
+    //         }
+    //     }
+    // }
+    // cout << endl;
+
+    cout << "Printing buckets of S..." << endl;
+    for (int i = 0; i < M-1; i++) {
+        cout << "-------" << endl;
+        cout << "Blocks for bucket #" << i << ":" << endl;
+        cout << "-------" << endl;
+        for (int j = 0; j < disk->size(); j++) {
+            if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "S")) {
+                cout << "Block #" << disk->at(j)->id << " for relation " << disk->at(j)->relationName << ":" << endl;
+                for (int k = 0; k < disk->at(j)->numTuples; k++) {
+                    cout << "-- [" << get<0>(disk->at(j)->tuples[k]) << ", " << get<1>(disk->at(j)->tuples[k]) << ", " << get<2>(disk->at(j)->tuples[k]) << "]" << endl;
+                }
+            }
         }
     }
+    cout << endl;
+
+    cout << "Printing buckets of R..." << endl;
+    for (int i = 0; i < M-1; i++) {
+        cout << "-------" << endl;
+        cout << "Blocks for bucket #" << i << ":" << endl;
+        cout << "-------" << endl;
+        for (int j = 0; j < disk->size(); j++) {
+            if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "R")) {
+                cout << "Block #" << disk->at(j)->id << " for relation " << disk->at(j)->relationName << ":" << endl;
+                for (int k = 0; k < disk->at(j)->numTuples; k++) {
+                    cout << "-- [" << get<0>(disk->at(j)->tuples[k]) << ", " << get<1>(disk->at(j)->tuples[k]) << ", " << get<2>(disk->at(j)->tuples[k]) << "]" << endl;
+                }
+            }
+        }
+    }
+    cout << endl;
+
+    cout << "Total number of reads: " << numDiskReads << endl;
+    cout << "Total number of writes: " << numDiskWrites << endl;
 
     cout << endl;
     cout << "Program finished." << endl;
