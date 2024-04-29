@@ -11,9 +11,10 @@ int numDiskReads = 0;
 int numDiskWrites = 0;
 int M = 15;
 int freeBlocks = 15;
-int numTuplesInS = 200;
-int numTuplesInR = 40;
+int numTuplesInS = 5000;
+int numTuplesInR = 1000;
 vector<int> usedKeys;
+vector<int> sharedKeys;
 
 struct block {
     tuple<string, int, string>* tuples;
@@ -72,6 +73,7 @@ void generateRelationS(vector<block*>* _disk)
         for (int i = 0; i < blockSize; i++) {
             // Create a random key
             randInt = rand() % 10;
+            if (randInt == 0) { randInt++; }
             randVal += randInt;
 
             // Create a random string
@@ -116,6 +118,7 @@ void generateRelationR(vector<block*>* _disk) {
             // Pick a random key that was used in relation R
             randInt = rand() % usedKeys.size();
             randVal = usedKeys.at(randInt);
+            sharedKeys.push_back(randVal);
 
             // Create a random string
             string randString = generateRandomString(5);
@@ -281,9 +284,99 @@ int hashFunction(int key)
 }
 
 // A one-pass natural join operation implementation
-void onePassNaturalJoin(int memIndex)
+void onePassNaturalJoin(int _bucketID)
 {
+    // Load entire bucket of R into memory
+    for (int i = 0; i < disk->size(); i++) {
+        if ((disk->at(i)->inBucket == true) && (disk->at(i)->bucketID == _bucketID) && (disk->at(i)->relationName == "R")) {
+            readFromDisk(disk->at(i)->id);
+        }
+    }
+
+    // For each S block in Si bucket
+        // For each block in bucket Ri
+            // Compare tuples in S block with tuples in R
+            // If a tuple has the same B-value
+                // If no space in the output block
+                    // Write output block to disk
+                    // Create new output block
+                // Join tuples and put in th output block 
     
+    for (int i = 0; i < disk->size(); i++) {
+        if ((disk->at(i)->inBucket == true) && (disk->at(i)->bucketID == _bucketID) && (disk->at(i)->relationName == "S")) {
+            readToMemBlock(disk->at(i)->id, M-2);
+
+            int count = 0;
+            int bound;
+            while ((mainMemory[count].first == 1) && (count < 13)) {
+                bound = mainMemory[count].second->numTuples;
+                for (int j = 0; j < bound; j++) {
+                    tuple<string, int, string> t = mainMemory[count].second->tuples[j];
+                    for (int k = 0; k < mainMemory[M-2].second->numTuples; k++) {
+                        if (get<1>(t) == get<1>(mainMemory[M-2].second->tuples[k])) {
+                            // Need to join tuples in output block
+                            if (mainMemory[M-1].first == 1) {
+                                if (mainMemory[M-1].second->numTuples < 8) {
+                                    // There is room in output block
+                                    // Join tuples
+                                    tuple<string, int, string> t1 = make_tuple(get<0>(t), get<1>(t), get<2>(mainMemory[M-2].second->tuples[k]));
+
+                                    // Add to output
+                                    mainMemory[M-1].second->tuples[mainMemory[M-1].second->numTuples] = t1;
+                                    mainMemory[M-1].second->numTuples++;
+                                } else {
+                                    // There is NO room in existing output block
+                                    // Write old output block to disk
+                                    mainMemory[M-1].second->relationName = "Z";
+                                    writeToDisk(M-1);
+
+                                    // Join tuples
+                                    tuple<string, int, string> t1 = make_tuple(get<0>(t), get<1>(t), get<2>(mainMemory[M-2].second->tuples[k]));
+
+                                    // Create new memory block
+                                    block b;
+                                    b.inBucket = true;
+                                    b.bucketID = _bucketID;
+                                    b.relationName = "Z";
+                                    b.tuples[0] = t1;
+                                    b.numTuples++;
+
+                                    mainMemory[M-1].first = 1;
+                                    *(mainMemory[M-1].second) = b;
+                                    freeBlocks--;
+                                }
+                            } else {
+                                // Need to create output block
+                                // Join tuples
+                                tuple<string, int, string> t1 = make_tuple(get<0>(t), get<1>(t), get<2>(mainMemory[M-2].second->tuples[k]));
+
+                                // Create block
+                                block b;
+                                b.inBucket = true;
+                                b.bucketID = _bucketID;
+                                b.relationName = "Z";
+                                b.tuples[0] = t1;
+                                b.numTuples++;
+                                
+                                // Set block
+                                mainMemory[M-1].first = 1;
+                                *(mainMemory[M-1].second) = b;
+                                freeBlocks--;
+                            }
+                        }
+                    }
+                }
+                count++;
+            }
+
+            // break;
+        }
+    }
+
+    writeToDisk(M-1);
+
+    // printMainMemory();
+    clearMainMemory();
 }
 
 void twoPassHashingNaturalJoin() 
@@ -358,7 +451,7 @@ void twoPassHashingNaturalJoin()
     }
 
     // Clear read block in main memory
-    clearMemoryBlock(M-1);
+    clearMainMemory();
 
     // Set buckets in main memory
     for (int i = 0; i < M-1; i++) {
@@ -422,11 +515,15 @@ void twoPassHashingNaturalJoin()
         writeToDisk(i);
     }
 
-    // Clear read block in main memory
-    clearMemoryBlock(M-1);
+    // Clear main memory
+    clearMainMemory();
 
     // For each bucket index i
         // call the one pass algorithm on the R_i bucket and S_i bucket
+    for (int i = 0; i < M-1; i++) {
+        onePassNaturalJoin(i);
+        // break;
+    }
 }
 
 int main()
@@ -480,38 +577,59 @@ int main()
 
     // cout << "Printing disk blocks..." << endl;
     // for (int i = 0; i < disk->size(); i++) {
-    //     if (disk->at(i)->inBucket == true) {
+    //     // if (disk->at(i)->inBucket == true) {
     //         cout << "Block #" << disk->at(i)->id << " for relation " << disk->at(i)->relationName << ":" << endl;
     //         for (int j = 0; j < disk->at(i)->numTuples; j++) {
     //             cout << "-- [" << get<0>(disk->at(i)->tuples[j]) << ", " << get<1>(disk->at(i)->tuples[j]) << ", " << get<2>(disk->at(i)->tuples[j]) << "]" << endl;
     //         }
-    //     }
+    //     // }
     // }
     // cout << endl;
 
-    cout << "Printing buckets of S..." << endl;
-    for (int i = 0; i < M-1; i++) {
-        cout << "-------" << endl;
-        cout << "Blocks for bucket #" << i << ":" << endl;
-        cout << "-------" << endl;
-        for (int j = 0; j < disk->size(); j++) {
-            if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "S")) {
-                cout << "Block #" << disk->at(j)->id << " for relation " << disk->at(j)->relationName << ":" << endl;
-                for (int k = 0; k < disk->at(j)->numTuples; k++) {
-                    cout << "-- [" << get<0>(disk->at(j)->tuples[k]) << ", " << get<1>(disk->at(j)->tuples[k]) << ", " << get<2>(disk->at(j)->tuples[k]) << "]" << endl;
-                }
-            }
-        }
-    }
-    cout << endl;
+    // for (int i = 0; i < disk->size(); i++) {
+    //     if ((disk->at(i)->inBucket == true) && (disk->at(i)->relationName == "R")) {
+    //         cout << "First block ID for R bucket = " << disk->at(i)->id << endl;
+    //         break;
+    //     }
+    // }
 
-    cout << "Printing buckets of R..." << endl;
+    // cout << "Printing buckets of S..." << endl;
+    // for (int i = 0; i < M-1; i++) {
+    //     cout << "-------" << endl;
+    //     cout << "Blocks for bucket #" << i << ":" << endl;
+    //     cout << "-------" << endl;
+    //     for (int j = 0; j < disk->size(); j++) {
+    //         if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "S")) {
+    //             cout << "Block #" << disk->at(j)->id << " for relation " << disk->at(j)->relationName << ":" << endl;
+    //             for (int k = 0; k < disk->at(j)->numTuples; k++) {
+    //                 cout << "-- [" << get<0>(disk->at(j)->tuples[k]) << ", " << get<1>(disk->at(j)->tuples[k]) << ", " << get<2>(disk->at(j)->tuples[k]) << "]" << endl;
+    //             }
+    //         }
+    //     }
+    // }
+    // cout << endl;
+    // cout << "Printing buckets of R..." << endl;
+    // for (int i = 0; i < M-1; i++) {
+    //     cout << "-------" << endl;
+    //     cout << "Blocks for bucket #" << i << ":" << endl;
+    //     cout << "-------" << endl;
+    //     for (int j = 0; j < disk->size(); j++) {
+    //         if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "R")) {
+    //             cout << "Block #" << disk->at(j)->id << " for relation " << disk->at(j)->relationName << ":" << endl;
+    //             for (int k = 0; k < disk->at(j)->numTuples; k++) {
+    //                 cout << "-- [" << get<0>(disk->at(j)->tuples[k]) << ", " << get<1>(disk->at(j)->tuples[k]) << ", " << get<2>(disk->at(j)->tuples[k]) << "]" << endl;
+    //             }
+    //         }
+    //     }
+    // }
+    // cout << endl;
+    cout << "Printing buckets of Z..." << endl;
     for (int i = 0; i < M-1; i++) {
         cout << "-------" << endl;
         cout << "Blocks for bucket #" << i << ":" << endl;
         cout << "-------" << endl;
         for (int j = 0; j < disk->size(); j++) {
-            if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "R")) {
+            if ((disk->at(j)->inBucket == true) && (disk->at(j)->bucketID == i) && (disk->at(j)->relationName == "Z")) {
                 cout << "Block #" << disk->at(j)->id << " for relation " << disk->at(j)->relationName << ":" << endl;
                 for (int k = 0; k < disk->at(j)->numTuples; k++) {
                     cout << "-- [" << get<0>(disk->at(j)->tuples[k]) << ", " << get<1>(disk->at(j)->tuples[k]) << ", " << get<2>(disk->at(j)->tuples[k]) << "]" << endl;
