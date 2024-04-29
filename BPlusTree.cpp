@@ -90,6 +90,8 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
     pair<node*, int>** records = nullptr;
 
     if (ptr->leaf == true) {
+        cout << "Leaf Node : ";
+        this->printNode(ptr);
         for (int i = 0; i < ptr->numKeys; i++) {
             if (ptr->keys[i] >= x) {
                 // cout << "Found starting point" << endl;
@@ -120,6 +122,8 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
                         break;
                     }
                     curr = curr->ptrs[order];
+                    cout << "Leaf Node : ";
+                    this->printNode(curr);
                     for (int j = 0; j < curr->numKeys; j++) {
                         if (curr->keys[j] > y) {
                             // cout << "Range limit reached 3" << endl;
@@ -150,6 +154,8 @@ pair<node*, int>** BPlusTree::rangeSearch(node* ptr, int x, int y)
             }
         }
     } else {
+        cout << "Internal Node : ";
+        this->printNode(ptr);
         for (int i = 0; i < ptr->numKeys; i++) {
             if (ptr->keys[i] >= x) {
                 return rangeSearch(ptr->ptrs[i], x, y);
@@ -182,6 +188,7 @@ bool BPlusTree::deletion(node* ptr, pair<node*, int>* p1, bool* belowMin)
 
     // Check if ptr is a leaf (Case 1)
     if (ptr->leaf == true) {
+        this->printNode(ptr);
         // Delete k from ptr
         bool found = false;
         for (int i = 0; i < ptr->numKeys; i++) {
@@ -203,6 +210,8 @@ bool BPlusTree::deletion(node* ptr, pair<node*, int>* p1, bool* belowMin)
         // If key was not found, return false
         if (found == false) {
             *belowMin = false;
+            cout << "Nodes After:" << endl;
+            this->printNode(ptr);
             return false;
         }
 
@@ -210,9 +219,13 @@ bool BPlusTree::deletion(node* ptr, pair<node*, int>* p1, bool* belowMin)
         int r = floor((order+1)/2);
         if ((ptr == this->getRoot()) || (ptr->numKeys >= r)) {
             *belowMin = false;
+            cout << "Nodes After:" << endl;
+            this->printNode(ptr);
             return true;
         } else {
             *belowMin = true;
+            cout << "Nodes After:" << endl;
+            this->printNode(ptr);
             return true;
         }
     } else { // Deleting at a non-leaf (Case 2)
@@ -325,6 +338,8 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
     node* p = p1->first;
     int k = p1->second;
 
+    this->printNode(ptr);
+
     // Check to see if we are creating a root
     if (root == nullptr) {
         // Create root node
@@ -332,6 +347,8 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
         root->keys[0] =  k;
         root->numKeys = 1;
         root->leaf = true;
+        cout << "Nodes After:" << endl;
+        this->printNode(root);
         return true;
     } else {
         // Check if we are at a leaf or non-leaf node
@@ -364,6 +381,7 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
                 // Return p' = nullptr, k' = 0
                 p2->first = nullptr;
                 p2->second = 0;
+                cout << "Nodes After:" << endl;
                 return true;
             } else {
                 // There is no space, create a new leaf and split values -- i.e., overflow (Case 2)
@@ -437,6 +455,7 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
                     p2->second = newLeaf->keys[0];
                 }
                 
+                cout << "Nodes After:" << endl;
                 return true;
             } 
 
@@ -454,6 +473,10 @@ bool BPlusTree::insertion(node* ptr, pair<node*, int>* p1, pair<node*, int>* p2)
             // Insert with p_i, and new pair with p'' and k''
             pair<node*, int>* p__ = new pair<node*, int>(nullptr, 0);
             insertion(ptr->ptrs[index], p1, p__);
+            this->printNode(ptr->ptrs[index]);
+            if (ptr == root) {
+                this->printNode(root);
+            }
 
             // If p'' = nullptr
                 // return k' = 0 and p' = nullptr
@@ -632,7 +655,7 @@ int getSmallestKey(node* subtree)
 
 node* sparseTreeHelper(BPlusTree* newTree, vector<node*> v, int level) 
 {
-    cout << "Generating internal nodes for level = " << level << endl;
+    // cout << "Generating internal nodes for level = " << level << endl;
 
     // Create new list for internal parent nodes
     vector<node*> v2;
@@ -776,7 +799,7 @@ BPlusTree* generateSparseTree(int numVals, int* vals)
     }
 
     // Create internal parent nodes for internal nodes, repeat until root is made
-    cout << "Creating internal nodes..." << endl;
+    // cout << "Creating internal nodes..." << endl;
     newTree->setRoot(sparseTreeHelper(newTree, v, 0));
     // newTree->printTree(newTree->getRoot(), 0);
 
@@ -785,7 +808,7 @@ BPlusTree* generateSparseTree(int numVals, int* vals)
 
 node* denseTreeHelper(BPlusTree* newTree, vector<node*> v, int level)
 {
-    cout << "Generating internal nodes for level = " << level << endl;
+    // cout << "Generating internal nodes for level = " << level << endl;
 
     // Create new list for internal parent nodes
     vector<node*> v2;
@@ -1000,7 +1023,7 @@ BPlusTree* generateDenseTree(int numVals, int* vals)
     // }
 
     // Create internal parent nodes for internal nodes, repeat until root is made
-    cout << "Creating internal nodes..." << endl;
+    // cout << "Creating internal nodes..." << endl;
     newTree->setRoot(denseTreeHelper(newTree, v, 0));
     // newTree->printTree(newTree->getRoot(), 0);
 
@@ -1031,113 +1054,119 @@ int* generateRecords(int numVals)
 
 int main()
 {
-    /*
-    // BPlusTree tree;
-    
-    // bool one = tree.insert(17);
-    // // cout << "Insertion attempt #1: " << one << endl;
-    // bool two = tree.insert(11);
-    // // cout << "Insertion attempt #2: " << two << endl;
-    // bool three = tree.insert(23);
-    // // cout << "Insertion attempt #3: " << three << endl;
-
-
-    // bool four = tree.insert(5);
-    // // cout << "Insertion attempt #4: " << four << endl;
-    // bool five = tree.insert(3);
-    // // cout << "Insertion attempt #5: " << five << endl;
-    // bool six = tree.insert(31);
-    // // cout << "Insertion attempt #6: " << six << endl;
-
-
-
-    // bool seven = tree.insert(2);
-    // // cout << "Insertion attempt #7: " << seven << endl;
-    // bool eight = tree.insert(29);
-    // // cout << "Insertion attempt #8: " << eight << endl;
-
-
-
-    // bool nine = tree.insert(50);
-    // // cout << "Insertion attempt #9: " << nine << endl;
-    // bool ten = tree.insert(51);
-    // // cout << "Insertion attempt #10: " << ten << endl;
-    // bool eleven = tree.insert(12);
-    // // cout << "Insertion attempt #11: " << eleven << endl;
-    // bool twelve = tree.insert(13);
-    // // cout << "Insertion attempt #12: " << twelve << endl;
-    // bool thirteen = tree.insert(14);
-    // // cout << "Insertion attempt #13: " << thirteen << endl;
-    // bool fourteen = tree.insert(15);
-    // // cout << "Insertion attempt #14: " << fourteen << endl;
-
-
-    
-    // tree.insert(6);
-    // tree.insert(7);
-    // tree.insert(8);
-    // tree.insert(9);
-    // tree.insert(52);
-    // tree.insert(53);
-    // tree.insert(54);
-    // tree.insert(55);
-    // tree.insert(56);
-
-
-
-    // tree.insert(57);
-    // // tree.insert(58);
-    // // tree.insert(59);
-    // // tree.insert(60);
-
-
-
-    // cout << endl;
-    // tree.printTree(tree.getRoot(), 0);
-    // cout << endl;
-
-
-    // // Testing search function
-    // int searchKey = 56;
-    // pair<node*, int> p = tree.search(tree.getRoot(), searchKey);
-
-    // if (p.second != -1) {
-    //     cout << "Key with value " << searchKey << " found in leaf at index " << p.second << endl;
-    //     cout << endl;
-    // } else {
-    //     cout << "Key with value " << searchKey << " not found in tree!" << endl;
-    //     cout << endl;
-    // }
-    */
-
-    // int input;
-    // cin >> input;
-    // generateSparseTree(input);
-    
+    cout << "Generating list of records..." << endl;
     int numVals = 10000;
     int* records = generateRecords(numVals);
-    BPlusTree* tree = generateSparseTree(numVals, records);
 
-    int key = 100000 + (rand() % 100000);
-    key = 100000 + (rand() % 100000);
-    key = 100000 + (rand() % 100000);
-    key = 100000 + (rand() % 100000);
-    key = 100000 + (rand() % 100000);
-    key = 185322;
+    cout << "Generating sparse tree..." << endl;
+    BPlusTree* sparseTree = generateSparseTree(numVals, records);
+
+    cout << "Generating dense tree..." << endl;
+    BPlusTree* denseTree = generateDenseTree(numVals, records);
     cout << "\n\n" << endl;
-    cout << "Searching for key = " << key << endl;
-    pair<node*, int> p = tree->search(tree->getRoot(), key);
+
+
+
+    // Randomly generated inserts
+    int randInt = rand() % 100000;
+    int randVal = 100000 + randInt;
+    cout << "Inserting " << randVal << " to sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->insert(randVal);
+    cout << endl;
+    cout << "Inserting " << randVal << " to dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->insert(randVal);
+    cout << endl;
+
+    int randInt2 = rand() % 100000;
+    int randVal2 = 100000 + randInt;
+    cout << "Inserting " << randVal2 << " to sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->insert(randVal2);
+    cout << endl;
+    cout << "Inserting " << randVal2 << " to dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->insert(randVal2);
+    cout << endl;
+
+
+
+    // Randomly generated deletes (based on inserts)
+    cout << "Deleting " << randVal << " from sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->Delete(randVal);
+    cout << endl;
+    cout << "Deleting " << randVal << " from dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->Delete(randVal);
+    cout << endl;
+
+    cout << "Deleting " << randVal2 << " from sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->Delete(randVal2);
+    cout << endl;
+    cout << "Deleting " << randVal2 << " from dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->Delete(randVal2);
+    cout << endl;
+    
+
+
+    // Searches (Known, Random, and Range Searches)
+    int key = 185322;
+    cout << "\n\n" << endl;
+    cout << "Searching for known key = " << key << endl;
+    pair<node*, int> p = sparseTree->search(sparseTree->getRoot(), key);
     if (p.second == -1) {
         cout << "Key not found!" << endl;
     } else {
         cout << "Key found at index " << p.second << endl;
     }
+    cout << endl;
 
-    // tree->insert(181);
-    // tree->printTree(tree->getRoot(), 0);
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << "\n\n" << endl;
 
     cout << "Starting range search..." << endl;
-    pair<node*, int>** vals = tree->rangeSearch(tree->getRoot(), 185100, 185200);
+    pair<node*, int>** vals = sparseTree->rangeSearch(sparseTree->getRoot(), 185100, 185200);
     cout << "Finished range search!" << endl;
 
     int index = 0;
@@ -1145,26 +1174,129 @@ int main()
         cout << "[" << vals[index]->second << "]" << endl;
         index++;
     }
+    cout << "\n\n" << endl;
 
-    // cout << endl;
-    // cout << "Deleting key 152..." << endl;
-    // tree->Delete(152);
-    // tree->printTree(tree->getRoot(), 0);
+    
 
-    // cout << endl;
-    // cout << "Deleting key 139..." << endl;
-    // tree->Delete(139);
-    // tree->printTree(tree->getRoot(), 0);
+    // Changing order and re-running operations
+    cout << "Changing tree order from 13 to 24..." << endl;
+    order = 24;
 
-    // cout << endl;
-    // cout << "Deleting key 180..." << endl;
-    // tree->Delete(180);
-    // tree->printTree(tree->getRoot(), 0);
+    cout << "Generating sparse tree..." << endl;
+    sparseTree = generateSparseTree(numVals, records);
 
-    // cout << endl;
-    // cout << "Deleting key 164..." << endl;
-    // tree->Delete(164);
-    // tree->printTree(tree->getRoot(), 0);
+    cout << "Generating sparse tree..." << endl;
+    denseTree = generateDenseTree(numVals, records);
+    cout << "\n\n" << endl;
+
+    // Randomly generated inserts
+    randInt = rand() % 100000;
+    randVal = 100000 + randInt;
+    cout << "Inserting " << randVal << " to sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->insert(randVal);
+    cout << endl;
+    cout << "Inserting " << randVal << " to dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->insert(randVal);
+    cout << endl;
+
+    randInt2 = rand() % 100000;
+    randVal2 = 100000 + randInt;
+    cout << "Inserting " << randVal2 << " to sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->insert(randVal2);
+    cout << endl;
+    cout << "Inserting " << randVal2 << " to dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->insert(randVal2);
+    cout << endl;
+
+
+
+    // Randomly generated deletes (based on inserts)
+    cout << "Deleting " << randVal << " from sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->Delete(randVal);
+    cout << endl;
+    cout << "Deleting " << randVal << " from dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->Delete(randVal);
+    cout << endl;
+
+    cout << "Deleting " << randVal2 << " from sparse tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    sparseTree->Delete(randVal2);
+    cout << endl;
+    cout << "Deleting " << randVal2 << " from dense tree..." << endl;
+    cout << "Nodes Before:" << endl;
+    denseTree->Delete(randVal2);
+    cout << endl;
+    
+
+
+    // Searches (Known, Random, and Range Searches)
+    key = 185322;
+    cout << "\n\n" << endl;
+    cout << "Searching for known key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << endl;
+
+    key = 100000 + (rand() % 100000);
+    cout << "Searching for random key = " << key << endl;
+    p = sparseTree->search(sparseTree->getRoot(), key);
+    if (p.second == -1) {
+        cout << "Key not found!" << endl;
+    } else {
+        cout << "Key found at index " << p.second << endl;
+    }
+    cout << "\n\n" << endl;
+
+    cout << "Starting range search..." << endl;
+    vals = sparseTree->rangeSearch(sparseTree->getRoot(), 185100, 185200);
+    cout << "Finished range search!" << endl;
+
+    index = 0;
+    while (vals[index] != nullptr) {
+        cout << "[" << vals[index]->second << "]" << endl;
+        index++;
+    }
+    cout << "\n\n" << endl;
 
     cout << "Program finished." << endl;
     return 0;
